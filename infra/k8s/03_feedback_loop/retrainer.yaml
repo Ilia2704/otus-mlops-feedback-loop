@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrainer
+  namespace: mlops-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: retrainer}
+  template:
+    metadata:
+      labels: {app: retrainer}
+    spec:
+      containers:
+        - name: app
+          image: titanic-retrainer:demo
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef: {name: demo-config}
+          env:
+            - name: MODEL_PATH
+              value: /models/model.joblib
+          ports:
+            - containerPort: 8004
+              name: http
+          volumeMounts:
+            - name: model
+              mountPath: /models
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: model-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retrainer
+  namespace: mlops-demo
+  labels:
+    app: retrainer
+    monitoring: prometheus
+spec:
+  selector: {app: retrainer}
+  ports:
+    - name: http
+      port: 8004
+      targetPort: 8004

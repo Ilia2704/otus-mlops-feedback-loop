@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+  namespace: mlops-demo
+data:
+  MODEL_URL: http://titanic-model:8000
+  DRIFTER_URL: http://drifter:8001
+  DRIFT_CHECKER_URL: http://drift-checker:8002
+  RETRAINER_URL: http://retrainer:8004
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  PROMETHEUS_URL: http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090
+
+  # Главные ручки для лекции:
+  REQUEST_INTERVAL_SECONDS: "1"
+  DRIFT_STEP_PER_REQUEST: "0.002"
+  DRIFT_MAX: "0.95"
+  INVALID_RATE: "0.08"
+
+  DRIFT_ROWS: "400"
+  DRIFT_CHECK_CRON: "*/2 * * * *"
+  CHECK_INTERVAL_SECONDS: "15"
+  ACCURACY_THRESHOLD: "0.78"
+  ACCURACY_WINDOW: "2m"
+  BAD_CHECKS_BEFORE_RETRAIN: "2"
+  RETRAIN_COOLDOWN_SECONDS: "120"
+  RETRAIN_ROWS: "800"

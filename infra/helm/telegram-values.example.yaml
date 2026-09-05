@@ -1,0 +1,25 @@
+# Copy to telegram-values.yaml and replace the placeholders.
+# Do not commit the file with a real bot token.
+# Only Titanic* alerts are sent to Telegram; kube-prometheus-stack system alerts stay silent.
+
+alertmanager:
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ["alertname"]
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 1h
+      receiver: "null"
+      routes:
+        - receiver: telegram
+          matchers:
+            - alertname=~"Titanic.*"
+    receivers:
+      - name: "null"
+      - name: telegram
+        telegram_configs:
+          - bot_token: "<BOT_TOKEN>"
+            chat_id: -1001234567890
+            send_resolved: true

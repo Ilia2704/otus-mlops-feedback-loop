@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: mlops-demo
+  namespace: mlops-demo
+  labels:
+    release: monitoring
+spec:
+  jobLabel: app
+  namespaceSelector:
+    matchNames: [mlops-demo]
+  selector:
+    matchLabels:
+      monitoring: prometheus
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 5s

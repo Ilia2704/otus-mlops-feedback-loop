@@ -1,0 +1,35 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: titanic-demo-alerts
+  namespace: mlops-demo
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: titanic-demo
+      rules:
+        - alert: TitanicServiceDown
+          expr: up{job="titanic-model"} == 0 or absent(up{job="titanic-model"})
+          for: 30s
+          labels: {severity: critical}
+          annotations:
+            summary: Titanic model service is down
+        - alert: TitanicHighHttpErrorRate
+          expr: sum(rate(starlette_requests_total{job="titanic-model",status_code=~"4..|5.."}[1m])) / clamp_min(sum(rate(starlette_requests_total{job="titanic-model"}[1m])), 0.001) > 0.05
+          for: 1m
+          labels: {severity: warning}
+          annotations:
+            summary: Titanic HTTP error rate is above 5%
+        - alert: TitanicAccuracyLow
+          expr: sum(rate(titanic_correct_predictions_total[2m])) / clamp_min(sum(rate(titanic_labeled_predictions_total[2m])), 0.001) < 0.78
+          for: 1m
+          labels: {severity: warning}
+          annotations:
+            summary: Titanic model accuracy is below 0.78
+        - alert: TitanicDataDrift
+          expr: titanic_drift_detected > 0
+          for: 30s
+          labels: {severity: warning}
+          annotations:
+            summary: Evidently detected data drift

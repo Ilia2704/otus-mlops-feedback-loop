@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drifter
+  namespace: mlops-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: drifter}
+  template:
+    metadata:
+      labels: {app: drifter}
+    spec:
+      containers:
+        - name: app
+          image: titanic-drifter:demo
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef: {name: demo-config}
+          ports:
+            - containerPort: 8001
+              name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drifter
+  namespace: mlops-demo
+  labels:
+    app: drifter
+    monitoring: prometheus
+spec:
+  selector: {app: drifter}
+  ports:
+    - name: http
+      port: 8001
+      targetPort: 8001

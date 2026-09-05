@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drift-checker
+  namespace: mlops-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: drift-checker}
+  template:
+    metadata:
+      labels: {app: drift-checker}
+    spec:
+      containers:
+        - name: app
+          image: titanic-drift-checker:demo
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef: {name: demo-config}
+          ports:
+            - containerPort: 8002
+              name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drift-checker
+  namespace: mlops-demo
+  labels:
+    app: drift-checker
+    monitoring: prometheus
+spec:
+  selector: {app: drift-checker}
+  ports:
+    - name: http
+      port: 8002
+      targetPort: 8002

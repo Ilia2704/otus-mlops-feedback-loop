@@ -1,0 +1,10 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+infra/helm/telegram-values.yaml
+
+telegram-values.yaml
+
+mlruns/
+artifacts/
+*.joblib

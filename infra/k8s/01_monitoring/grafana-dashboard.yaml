@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: titanic-dashboard
+  namespace: mlops-demo
+  labels:
+    grafana_dashboard: "1"
+data:
+  titanic.json: |-
+    {
+      "title": "Titanic MLOps Demo",
+      "uid": "titanic-mlops-demo",
+      "schemaVersion": 39,
+      "version": 2,
+      "refresh": "5s",
+      "time": {"from": "now-15m", "to": "now"},
+      "panels": [
+        {"type":"stat","title":"RPS","id":1,"gridPos":{"h":5,"w":6,"x":0,"y":0},"targets":[{"expr":"sum(rate(starlette_requests_total{job=\"titanic-model\",path=\"/predict\"}[1m]))"}]},
+        {"type":"stat","title":"HTTP errors / s","id":2,"gridPos":{"h":5,"w":6,"x":6,"y":0},"targets":[{"expr":"sum(rate(starlette_requests_total{job=\"titanic-model\",status_code=~\"4..|5..\"}[1m]))"}]},
+        {"type":"stat","title":"Accuracy","id":3,"gridPos":{"h":5,"w":6,"x":12,"y":0},"targets":[{"expr":"sum(rate(titanic_correct_predictions_total[2m])) / clamp_min(sum(rate(titanic_labeled_predictions_total[2m])), 0.001)"}]},
+        {"type":"stat","title":"Drift share","id":4,"gridPos":{"h":5,"w":6,"x":18,"y":0},"targets":[{"expr":"titanic_drift_share"}]},
+        {"type":"timeseries","title":"Prediction rate","id":5,"gridPos":{"h":8,"w":12,"x":0,"y":5},"targets":[{"expr":"sum by (prediction) (rate(titanic_predictions_total[1m]))","legendFormat":"prediction={{prediction}}"}]},
+        {"type":"timeseries","title":"Drift strength / detected","id":6,"gridPos":{"h":8,"w":12,"x":12,"y":5},"targets":[{"expr":"titanic_demo_drift_strength","legendFormat":"strength"},{"expr":"titanic_drift_detected","legendFormat":"detected"}]},
+        {"type":"timeseries","title":"Model reload / retrain","id":7,"gridPos":{"h":8,"w":12,"x":0,"y":13},"targets":[{"expr":"increase(titanic_model_reloads_total[5m])","legendFormat":"model reloads"},{"expr":"increase(titanic_retraining_runs_total{result=\"success\"}[5m])","legendFormat":"retraining"}]},
+        {"type":"timeseries","title":"Unknown categories","id":8,"gridPos":{"h":8,"w":12,"x":12,"y":13},"targets":[{"expr":"sum by (feature) (rate(titanic_unknown_category_total[1m]))","legendFormat":"{{feature}}"}]},
+        {"type":"timeseries","title":"Feature drift score","id":9,"gridPos":{"h":8,"w":12,"x":0,"y":21},"targets":[{"expr":"titanic_feature_drift_score","legendFormat":"{{feature}}"}]},
+        {"type":"timeseries","title":"Retrain validation quality","id":10,"gridPos":{"h":8,"w":12,"x":12,"y":21},"targets":[{"expr":"titanic_retraining_accuracy","legendFormat":"accuracy"},{"expr":"titanic_retraining_roc_auc","legendFormat":"ROC-AUC"}]},
+        {"type":"timeseries","title":"Age distribution","id":11,"gridPos":{"h":8,"w":8,"x":0,"y":29},"targets":[{"expr":"sum by (le) (rate(titanic_input_age_years_bucket[2m]))","legendFormat":"le={{le}}"}]},
+        {"type":"timeseries","title":"Fare distribution","id":12,"gridPos":{"h":8,"w":8,"x":8,"y":29},"targets":[{"expr":"sum by (le) (rate(titanic_input_fare_bucket[2m]))","legendFormat":"le={{le}}"}]},
+        {"type":"timeseries","title":"Survival probability distribution","id":13,"gridPos":{"h":8,"w":8,"x":16,"y":29},"targets":[{"expr":"sum by (le) (rate(titanic_survival_probability_bucket[2m]))","legendFormat":"le={{le}}"}]}
+      ]
+    }

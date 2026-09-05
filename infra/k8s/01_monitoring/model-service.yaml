@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: titanic-model
+  namespace: mlops-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: titanic-model}
+  template:
+    metadata:
+      labels: {app: titanic-model}
+    spec:
+      containers:
+        - name: app
+          image: titanic-model:demo
+          imagePullPolicy: Never
+          env:
+            - name: MODEL_PATH
+              value: /models/model.joblib
+          ports:
+            - containerPort: 8000
+              name: http
+          volumeMounts:
+            - name: model
+              mountPath: /models
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: model-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: titanic-model
+  namespace: mlops-demo
+  labels:
+    app: titanic-model
+    monitoring: prometheus
+spec:
+  selector: {app: titanic-model}
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
