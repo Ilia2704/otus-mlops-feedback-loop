@@ -37,6 +37,8 @@ for key in ["MODEL_URL", "DRIFTER_URL", "DRIFT_CHECKER_URL", "RETRAINER_URL", "M
     host = re.sub(r"^https?://", "", config[key]).split(":", 1)[0].split(".", 1)[0]
     assert host in services, (key, host, sorted(services))
 assert config["ACCURACY_THRESHOLD"] == "0.78"
+assert config["MODEL_REGISTRY_NAME"] == "titanic-survival-model"
+assert config["AUTO_PROMOTE_MODEL"] in {"true", "false"}
 
 # ServiceMonitor intentionally selects all instrumented demo services.
 sm = yaml.safe_load((ROOT / "infra/k8s/01_monitoring/servicemonitor.yaml").read_text())
@@ -93,5 +95,22 @@ drift_checker = (ROOT / "demos/02_data_drift/drift_checker/main.py").read_text()
 for feature in ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]:
     assert feature in model_code
     assert feature in drift_checker
+
+# Retraining must make MLflow Registry the source of the deployed model, not
+# merely an artifact store. Staging, Production promotion and rollback are
+# intentionally checked as source-level contracts because no cluster is needed.
+retrainer = (ROOT / "demos/03_feedback_loop/retrainer/main.py").read_text()
+for token in [
+    "create_registered_model",
+    "create_model_version",
+    'stage="Staging"',
+    'stage="Production"',
+    "mlflow.sklearn.log_model",
+    "mlflow.sklearn.load_model",
+    '"/approve/{version}"',
+    '"/rollback/{version}"',
+    "titanic_active_model_version",
+]:
+    assert token in retrainer, token
 
 print("integration static checks: OK")

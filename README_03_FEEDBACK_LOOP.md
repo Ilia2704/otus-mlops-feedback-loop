@@ -10,9 +10,9 @@
 Drifter -> Titanic model -> Prometheus accuracy
               ^                    |
               |                    v
-        shared model PVC <- retrainer <- feedback controller
-                                |
-                                +-> MLflow
+        shared model PVC <- MLflow Registry <- retrainer <- feedback controller
+                                                    |
+                                                    +-> MLflow run
 ```
 
 ## Слайд из лекции
@@ -67,10 +67,44 @@ Retrainer:
 2. делает stratified train/test split;
 3. обучает тот же sklearn pipeline;
 4. считает validation accuracy и ROC-AUC;
-5. пишет metrics + model artifact в MLflow experiment `titanic-retraining`;
-6. атомарно заменяет `/models/model.joblib` на общем PVC.
+5. пишет metrics + sklearn model artifact в MLflow experiment `titanic-retraining`;
+6. создает новую версию registered model `titanic-survival-model` в MLflow и переводит ее в `Staging`;
+7. проверяет quality gate, затем переводит версию в `Production`;
+8. скачивает именно Production-версию из MLflow Registry и атомарно заменяет `/models/model.joblib` на общем PVC.
 
 Model service замечает изменение `mtime` и reload-ит artifact без redeploy.
+
+## MLflow Registry: promotion и rollback
+
+Каждый retrain создает MLflow run и новую версию `titanic-survival-model`. До deployment она находится в `Staging` и получает tags с результатом quality gate. По умолчанию включен автоматический promotion, только если одновременно выполнены:
+
+```text
+validation accuracy >= 0.80
+validation ROC-AUC  >= 0.85
+```
+
+После успешного gate новая версия становится `Production`, предыдущая Production-версия архивируется, а serving service получает артефакт именно из Registry. Порог и режим approval задаются в `demo-config.yaml`:
+
+```yaml
+MODEL_REGISTRY_NAME: "titanic-survival-model"
+AUTO_PROMOTE_MODEL: "true"
+PROMOTION_MIN_ACCURACY: "0.80"
+PROMOTION_MIN_ROC_AUC: "0.85"
+```
+
+Для ручного approval установите `AUTO_PROMOTE_MODEL: "false"`, примените ConfigMap и перезапустите retrainer. Затем выберите version в MLflow UI или вызовите API:
+
+```bash
+curl -X POST http://127.0.0.1:8004/approve/<VERSION>
+```
+
+Rollback не требует повторного обучения: он возвращает выбранную зарегистрированную версию в `Production` и записывает ее artifact в shared PVC:
+
+```bash
+curl -X POST http://127.0.0.1:8004/rollback/<VERSION>
+```
+
+Registry lifecycle отдается в Prometheus через `titanic_active_model_version` и `titanic_model_registry_events_total`.
 
 На контрольной симуляции при `drift=0.95`:
 

@@ -15,7 +15,7 @@ Titanic traffic -> FastAPI model -> Prometheus -> Grafana
                  |
               Airflow
 
-Prometheus accuracy -> feedback controller -> retrainer -> shared model -> model reload
+Prometheus accuracy -> feedback controller -> retrainer -> MLflow Registry -> shared model -> model reload
 ```
 
 Helm используется только для `kube-prometheus-stack`. Terraform нет. Остальная логика — обычные Kubernetes manifests и короткие Python-сервисы.

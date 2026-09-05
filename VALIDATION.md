@@ -75,6 +75,7 @@ python -m compileall -q .
 - ServiceMonitor выбирает эти Services;
 - PrometheusRule содержит demo alerts;
 - model service и retrainer используют общий model PVC;
+- retrainer регистрирует версию в MLflow Registry, использует `Staging`/`Production` и имеет rollback API;
 - MLflow/Airflow/Drifter/Checker/Controller wiring согласован;
 - Helm устанавливает pinned `kube-prometheus-stack 89.2.2` с `--wait`.
 
