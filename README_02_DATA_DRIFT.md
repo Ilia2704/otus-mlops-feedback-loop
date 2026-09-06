@@ -7,7 +7,7 @@
 ## Архитектура
 
 ```text
-Titanic reference CSV ----------------------+
+MinIO reference CSV -------------------------+
                                              |
 Drifter -> current Titanic CSV -> Evidently checker -> MLflow
                                       |
@@ -47,13 +47,14 @@ Parch     -> небольшое увеличение
 
 `POST /check`:
 
-1. читает reference `data/titanic_train.csv`;
+1. читает reference `s3://mlops-data/reference/titanic_train.csv` из MinIO;
 2. забирает current dataset у Drifter;
 3. запускает `DataDriftPreset`;
 4. экспортирует `titanic_drift_detected`, `titanic_drift_share` и `titanic_feature_drift_score{feature=...}`;
 5. создает MLflow run;
 6. логирует per-feature drift score;
-7. сохраняет `current.csv`, `evidently.html`, `evidently.json`.
+7. сохраняет используемый current CSV в `s3://mlops-data/current/`;
+8. сохраняет `current.csv`, `evidently.html`, `evidently.json` в MLflow, чьи artifacts находятся в MinIO `model-artifacts/`.
 
 Airflow вызывает checker по `DRIFT_CHECK_CRON`.
 
@@ -63,15 +64,28 @@ Airflow вызывает checker по `DRIFT_CHECK_CRON`.
 make infra
 make images
 make apps
-kubectl -n mlops-demo port-forward svc/mlflow 5000:5000
-kubectl -n mlops-demo port-forward svc/airflow 8080:8080
-kubectl -n mlops-demo port-forward svc/drift-checker 8002:8002
+make ports
 ```
 
 Ручной check:
 
 ```bash
 curl -X POST http://127.0.0.1:8002/check
+```
+
+Сохранить текущую drifted выборку локально:
+
+```bash
+curl --fail --silent --show-error \
+  "http://127.0.0.1:8001/data?rows=400" > current-drift.csv
+```
+
+Без port-forward можно получить тот же CSV прямо из Pod; команда завершается сразу и сохраняет файл в текущую директорию:
+
+```bash
+kubectl -n mlops-demo exec deployment/drifter -- python -c \
+  'import requests; response = requests.get("http://127.0.0.1:8001/data?rows=400", timeout=10); response.raise_for_status(); print(response.text, end="")' \
+  > current-drift.csv
 ```
 
 В MLflow откройте experiment `titanic-drift`. Каждый вызов `/check` — отдельный run.

@@ -33,15 +33,24 @@ for image in custom_images:
 
 # Internal URLs in demo-config must resolve to Service names.
 config = yaml.safe_load((ROOT / "infra/k8s/common/demo-config.yaml").read_text())["data"]
-for key in ["MODEL_URL", "DRIFTER_URL", "DRIFT_CHECKER_URL", "RETRAINER_URL", "MLFLOW_TRACKING_URI"]:
+for key in [
+    "MODEL_URL",
+    "DRIFTER_URL",
+    "DRIFT_CHECKER_URL",
+    "RETRAINER_URL",
+    "MLFLOW_TRACKING_URI",
+    "MINIO_ENDPOINT",
+]:
     host = re.sub(r"^https?://", "", config[key]).split(":", 1)[0].split(".", 1)[0]
     assert host in services, (key, host, sorted(services))
 assert config["ACCURACY_THRESHOLD"] == "0.78"
 assert config["MODEL_REGISTRY_NAME"] == "titanic-survival-model"
 assert config["AUTO_PROMOTE_MODEL"] in {"true", "false"}
+assert config["MINIO_BUCKET"] == "mlops-data"
 
 # ServiceMonitor intentionally selects all instrumented demo services.
 sm = yaml.safe_load((ROOT / "infra/k8s/01_monitoring/servicemonitor.yaml").read_text())
+assert sm["metadata"]["namespace"] == "monitoring"
 assert sm["spec"]["selector"]["matchLabels"] == {"monitoring": "prometheus"}
 assert sm["spec"]["endpoints"][0]["port"] == "http"
 assert {"titanic-model", "drifter", "drift-checker", "retrainer", "feedback-controller"} <= monitoring_services
@@ -49,6 +58,8 @@ assert {"titanic-model", "drifter", "drift-checker", "retrainer", "feedback-cont
 # Dashboard and rules must reference the core demo signals.
 dashboard = (ROOT / "infra/k8s/01_monitoring/grafana-dashboard.yaml").read_text()
 rules = (ROOT / "infra/k8s/04_alerting/prometheus-rules.yaml").read_text()
+assert yaml.safe_load(dashboard)["metadata"]["namespace"] == "monitoring"
+assert yaml.safe_load(rules)["metadata"]["namespace"] == "monitoring"
 for metric in [
     "starlette_requests_total",
     "titanic_correct_predictions_total",
@@ -112,5 +123,15 @@ for token in [
     "titanic_active_model_version",
 ]:
     assert token in retrainer, token
+
+minio = (ROOT / "infra/k8s/common/minio.yaml").read_text()
+minio_init = (ROOT / "infra/k8s/common/minio-init.yaml").read_text()
+mlflow_manifest = (ROOT / "infra/k8s/common/mlflow.yaml").read_text()
+for token in ["minio-credentials", "minio-pvc", "containerPort: 9000", "containerPort: 9001"]:
+    assert token in minio, token
+for token in ["reference/titanic_train.csv", "for prefix in current model-artifacts", "mc pipe"]:
+    assert token in minio_init, token
+assert "s3://mlops-data/model-artifacts" in mlflow_manifest
+assert "titanic-mlflow:demo" in mlflow_manifest
 
 print("integration static checks: OK")

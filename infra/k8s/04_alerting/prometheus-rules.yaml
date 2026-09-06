@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: titanic-demo-alerts
-  namespace: mlops-demo
+  namespace: monitoring
   labels:
     release: monitoring
 spec:

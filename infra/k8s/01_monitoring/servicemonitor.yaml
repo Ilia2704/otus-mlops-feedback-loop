@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: mlops-demo
-  namespace: mlops-demo
+  namespace: monitoring
   labels:
     release: monitoring
 spec:

@@ -4,7 +4,9 @@ import io
 import json
 import os
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 import mlflow
 import pandas as pd
@@ -16,10 +18,14 @@ from fastapi import FastAPI, HTTPException
 from prometheus_client import Counter, Gauge
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
-DATA_PATH = Path(os.getenv("DATA_PATH", "/app/data/titanic_train.csv"))
+from shared.object_store import put_text, read_csv
+
 DRIFTER_URL = os.getenv("DRIFTER_URL", "http://drifter:8001")
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
 DRIFT_ROWS = int(os.getenv("DRIFT_ROWS", "400"))
+MINIO_BUCKET = os.getenv("MINIO_BUCKET", "mlops-data")
+REFERENCE_DATASET_KEY = os.getenv("REFERENCE_DATASET_KEY", "reference/titanic_train.csv")
+CURRENT_DATASET_PREFIX = os.getenv("CURRENT_DATASET_PREFIX", "current")
 
 RAW_FEATURES = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]
 NUMERIC_FEATURES = ["Age", "SibSp", "Parch", "Fare"]
@@ -45,10 +51,20 @@ def extract_drift_result(report_dict: dict) -> dict:
 
 
 def run_check() -> dict:
-    reference = pd.read_csv(DATA_PATH)
+    reference = read_csv(MINIO_BUCKET, REFERENCE_DATASET_KEY)
     response = requests.get(f"{DRIFTER_URL}/data", params={"rows": DRIFT_ROWS}, timeout=30)
     response.raise_for_status()
     current = pd.read_csv(io.StringIO(response.text))
+    current_key = (
+        f"{CURRENT_DATASET_PREFIX}/drift-check-"
+        f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid4().hex}.csv"
+    )
+    current_dataset_uri = put_text(
+        MINIO_BUCKET,
+        current_key,
+        current.to_csv(index=False),
+        content_type="text/csv",
+    )
 
     for frame in (reference, current):
         frame["Pclass"] = frame["Pclass"].astype(str)
@@ -97,6 +113,8 @@ def run_check() -> dict:
             mlflow.set_tag("check_status", "success")
             mlflow.log_param("dataset_drift", detected)
             mlflow.log_param("features", ",".join(RAW_FEATURES))
+            mlflow.log_param("reference_dataset_uri", f"s3://{MINIO_BUCKET}/{REFERENCE_DATASET_KEY}")
+            mlflow.log_param("current_dataset_uri", current_dataset_uri)
             mlflow.log_metric("share_of_drifted_columns", share)
             mlflow.log_metric(
                 "number_of_drifted_columns",
@@ -113,6 +131,7 @@ def run_check() -> dict:
         "dataset_drift": detected,
         "share_of_drifted_columns": share,
         "feature_scores": per_feature_scores,
+        "current_dataset_uri": current_dataset_uri,
         "mlflow_run_id": run_id,
     }
 

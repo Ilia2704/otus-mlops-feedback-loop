@@ -7,13 +7,20 @@ import sys
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+IGNORED_DIRECTORIES = {".git", ".venv", "__pycache__", ".pytest_cache"}
+
+
+def project_files(pattern: str):
+    for path in ROOT.rglob(pattern):
+        if not any(part in IGNORED_DIRECTORIES for part in path.relative_to(ROOT).parts):
+            yield path
 
 # 1. Every Python file parses.
-for path in ROOT.rglob("*.py"):
+for path in project_files("*.py"):
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
 # 2. Every YAML document parses.
-for path in ROOT.rglob("*.yaml"):
+for path in project_files("*.yaml"):
     list(yaml.safe_load_all(path.read_text(encoding="utf-8")))
 
 # 3. Grafana JSON embedded in ConfigMap parses.

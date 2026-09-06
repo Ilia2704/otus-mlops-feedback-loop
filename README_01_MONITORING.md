@@ -70,16 +70,16 @@ make apps
 Port-forward:
 
 ```bash
-kubectl -n mlops-demo port-forward svc/titanic-model 8000:8000
-kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090
-kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80
+make ports
 ```
+
+Команда работает в фоне; состояние и остановка: `make ports-status`, `make ports-stop`.
 
 Отдельный traffic generator:
 
 ```bash
-python -m pip install -r demos/01_monitoring/requirements.txt
-python demos/01_monitoring/send_requests.py --count 100 --invalid-rate 0.10
+uv sync --group dev
+uv run --group dev python demos/01_monitoring/send_requests.py --count 100 --invalid-rate 0.10
 ```
 
 Пароль Grafana:

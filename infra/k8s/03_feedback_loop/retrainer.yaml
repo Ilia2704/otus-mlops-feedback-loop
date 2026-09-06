@@ -17,6 +17,7 @@ spec:
           imagePullPolicy: Never
           envFrom:
             - configMapRef: {name: demo-config}
+            - secretRef: {name: minio-credentials}
           env:
             - name: MODEL_PATH
               value: /models/model.joblib

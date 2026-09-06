@@ -67,7 +67,7 @@ kubectl apply -f infra/k8s/04_alerting/prometheus-rules.yaml
 Проверка:
 
 ```bash
-kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090
+make ports
 ```
 
 Откройте Prometheus -> Alerts. Для быстрого теста:

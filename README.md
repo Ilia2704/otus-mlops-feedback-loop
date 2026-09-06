@@ -5,12 +5,10 @@
 ## Что внутри
 
 ```text
-Titanic traffic -> FastAPI model -> Prometheus -> Grafana
-       |                  |             |
-       v                  |             +-> Alertmanager -> Telegram
-    Drifter --------------+
-       |
-       +-> Evidently checker -> MLflow
+MinIO reference CSV -> Drifter -> FastAPI model -> Prometheus -> Grafana
+       |                    |                  |             |
+       |                    v                  |             +-> Alertmanager -> Telegram
+       +-> current datasets -> Evidently checker -> MLflow -> MinIO artifacts
                  ^
                  |
               Airflow
@@ -19,6 +17,15 @@ Prometheus accuracy -> feedback controller -> retrainer -> MLflow Registry -> sh
 ```
 
 Helm используется только для `kube-prometheus-stack`. Terraform нет. Остальная логика — обычные Kubernetes manifests и короткие Python-сервисы.
+
+## Namespaces
+
+Проект разделен на два namespace по назначению:
+
+- `monitoring` — `kube-prometheus-stack` (Prometheus, Grafana, Alertmanager) и связанные с ним `ServiceMonitor`, `PrometheusRule`, Grafana dashboard;
+- `mlops-demo` — контур обратной петли: model service, drifter, drift-checker, Airflow, controller, retrainer, MLflow и MinIO.
+
+Таким образом, в Kubernetes Dashboard workloads не смешиваются с observability-подсистемой. У `mlops-demo` установлен label `app.kubernetes.io/part-of=feedback-loop`.
 
 ## Модель
 
@@ -85,15 +92,40 @@ drift=0.95 -> accuracy 0.6940
 after retraining at drift=0.95 -> accuracy 0.8470, ROC-AUC 0.8919
 ```
 
-## Быстрый запуск
+## Среда и быстрый запуск
 
-Требования: Docker, Minikube, kubectl и Helm. Рекомендуется 6 CPU и 10 GB RAM.
+Для Kubernetes-демо нужны Docker Desktop, Minikube, `kubectl` и Helm. Для локальных проверок, генерации датасета и ручного traffic-generator используется [UV](https://docs.astral.sh/uv/); `pip` и ручной virtualenv не нужны.
+
+На macOS:
 
 ```bash
-minikube start --cpus=6 --memory=10240
+brew install uv minikube kubectl helm
+uv python install 3.11
+uv sync --group dev
+```
+
+Для Docker Desktop с лимитом около 9 GB используйте 4 CPU и 7 GB RAM. Перед запуском убедитесь, что Docker Desktop уже запущен:
+
+```bash
+minikube start --driver=docker --cpus=4 --memory=7168
 make up
 make status
 make ports
+```
+
+Kubernetes Dashboard Minikube открывается отдельной командой (она занимает текущий terminal):
+
+```bash
+make kube-ui
+```
+
+`make up` собирает container images внутри Minikube. UV окружение используется только локальными командами `make check`, `make evaluate`, `make data` и traffic-generator; зависимости внутри контейнеров остаются pinned в соответствующих `requirements.txt`.
+
+`make ports` запускает port-forward для доступных Services в фоне и сразу освобождает terminal. Проверить или остановить их можно так:
+
+```bash
+make ports-status
+make ports-stop
 ```
 
 Основные UI:
@@ -101,6 +133,7 @@ make ports
 - Grafana: `localhost:3000`;
 - Prometheus: `localhost:9090`;
 - MLflow: `localhost:5000`;
+- MinIO Console: `localhost:9001`, `minio` / `minio123`;
 - Airflow: `localhost:8080`, `admin/admin`;
 - Titanic API: `localhost:8000`.
 
@@ -141,6 +174,20 @@ kubectl -n mlops-demo rollout restart deploy/drifter deploy/feedback-controller 
 
 `data/titanic_train.csv` — детерминированный учебный Titanic-shaped dataset с классической схемой из 12 колонок. Он включен в архив, поэтому сеть не нужна. Подробности: `data/README.md`.
 
+## Object storage: MinIO
+
+`make apps` разворачивает MinIO с PVC и выполняет Job `minio-init`. Job загружает локальный `data/titanic_train.csv` в object storage и создает bucket `mlops-data` со следующими префиксами:
+
+```text
+reference/titanic_train.csv  # reference dataset
+current/                     # snapshots из drift-checker и retrainer
+model-artifacts/             # MLflow artifacts, включая модели
+```
+
+Drifter и Evidently checker читают reference CSV из `s3://mlops-data/reference/titanic_train.csv`; checker и retrainer сохраняют используемые current datasets в `current/`. MLflow использует `s3://mlops-data/model-artifacts/` как artifact destination.
+
+После `make ports` откройте MinIO Console на `http://localhost:9001`. Учебные credentials: `minio` / `minio123`.
+
 ## Что взято из двух исходных проектов
 
 Из `otus-ml-monitoring-37-test`: Titanic FastAPI service, `/metrics`, Prometheus middleware, ServiceMonitor, Helm installation `kube-prometheus-stack` и идея невалидных inference requests.
@@ -150,7 +197,7 @@ kubectl -n mlops-demo rollout restart deploy/drifter deploy/feedback-controller 
 ## Проверка
 
 ```bash
-python -m pip install -r requirements-dev.txt
+uv sync --group dev
 make check
 make evaluate
 ```

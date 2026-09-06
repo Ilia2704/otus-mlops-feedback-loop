@@ -67,10 +67,11 @@ Retrainer:
 2. делает stratified train/test split;
 3. обучает тот же sklearn pipeline;
 4. считает validation accuracy и ROC-AUC;
-5. пишет metrics + sklearn model artifact в MLflow experiment `titanic-retraining`;
-6. создает новую версию registered model `titanic-survival-model` в MLflow и переводит ее в `Staging`;
-7. проверяет quality gate, затем переводит версию в `Production`;
-8. скачивает именно Production-версию из MLflow Registry и атомарно заменяет `/models/model.joblib` на общем PVC.
+5. сохраняет training dataset в MinIO `current/` и пишет его URI в MLflow run;
+6. пишет metrics + sklearn model artifact в MLflow experiment `titanic-retraining` (artifact destination — MinIO `model-artifacts/`);
+7. создает новую версию registered model `titanic-survival-model` в MLflow и переводит ее в `Staging`;
+8. проверяет quality gate, затем переводит версию в `Production`;
+9. скачивает именно Production-версию из MLflow Registry и атомарно заменяет `/models/model.joblib` на общем PVC.
 
 Model service замечает изменение `mtime` и reload-ит artifact без redeploy.
 
@@ -137,8 +138,7 @@ RETRAIN_ROWS: "800"
 make infra
 make images
 make apps
-kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80
-kubectl -n mlops-demo port-forward svc/mlflow 5000:5000
+make ports
 ```
 
 На Grafana dashboard смотрите `Accuracy`, `Drift strength`, `Feature drift score`, `Retrain validation quality` и `Model reload / retrain`.

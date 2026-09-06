@@ -24,13 +24,21 @@ spec:
     spec:
       containers:
         - name: mlflow
-          image: ghcr.io/mlflow/mlflow:v2.17.2
+          image: titanic-mlflow:demo
+          imagePullPolicy: Never
           command: ["sh", "-c"]
           args:
             - >-
               mlflow server --host 0.0.0.0 --port 5000
               --backend-store-uri sqlite:////mlflow/mlflow.db
-              --serve-artifacts --artifacts-destination /mlflow/artifacts
+              --serve-artifacts --artifacts-destination s3://mlops-data/model-artifacts
+          env:
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: http://minio:9000
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+          envFrom:
+            - secretRef: {name: minio-credentials}
           ports:
             - containerPort: 5000
               name: http

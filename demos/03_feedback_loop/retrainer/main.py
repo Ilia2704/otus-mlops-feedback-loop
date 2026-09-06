@@ -4,6 +4,8 @@ import io
 import math
 import os
 from pathlib import Path
+from datetime import datetime, timezone
+from uuid import uuid4
 
 import mlflow
 import mlflow.sklearn
@@ -17,6 +19,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
+from shared.object_store import put_text
 from shared.titanic_model import MODEL_FEATURES, clean_features, save_model, train_model
 
 MODEL_PATH = Path(os.getenv("MODEL_PATH", "/models/model.joblib"))
@@ -27,6 +30,8 @@ MODEL_REGISTRY_NAME = os.getenv("MODEL_REGISTRY_NAME", "titanic-survival-model")
 AUTO_PROMOTE_MODEL = os.getenv("AUTO_PROMOTE_MODEL", "true").lower() == "true"
 PROMOTION_MIN_ACCURACY = float(os.getenv("PROMOTION_MIN_ACCURACY", "0.80"))
 PROMOTION_MIN_ROC_AUC = float(os.getenv("PROMOTION_MIN_ROC_AUC", "0.85"))
+MINIO_BUCKET = os.getenv("MINIO_BUCKET", "mlops-data")
+CURRENT_DATASET_PREFIX = os.getenv("CURRENT_DATASET_PREFIX", "current")
 
 app = FastAPI(title="Titanic retrainer")
 app.add_middleware(PrometheusMiddleware)
@@ -147,6 +152,16 @@ def retrain_once() -> dict:
     response = requests.get(f"{DRIFTER_URL}/data", params={"rows": RETRAIN_ROWS}, timeout=30)
     response.raise_for_status()
     df = pd.read_csv(io.StringIO(response.text))
+    training_dataset_key = (
+        f"{CURRENT_DATASET_PREFIX}/retraining-"
+        f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid4().hex}.csv"
+    )
+    training_dataset_uri = put_text(
+        MINIO_BUCKET,
+        training_dataset_key,
+        df.to_csv(index=False),
+        content_type="text/csv",
+    )
     train_df, test_df = train_test_split(
         df,
         test_size=0.25,
@@ -170,6 +185,7 @@ def retrain_once() -> dict:
         mlflow.log_param("rows", len(df))
         mlflow.log_param("model", "LogisticRegression")
         mlflow.log_param("features", ",".join(MODEL_FEATURES))
+        mlflow.log_param("training_dataset_uri", training_dataset_uri)
         mlflow.log_metric("validation_accuracy", accuracy)
         mlflow.log_metric("validation_roc_auc", roc_auc)
         mlflow.log_metric("survival_rate", float(df["Survived"].mean()))

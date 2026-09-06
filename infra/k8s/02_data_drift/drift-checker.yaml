@@ -17,6 +17,7 @@ spec:
           imagePullPolicy: Never
           envFrom:
             - configMapRef: {name: demo-config}
+            - secretRef: {name: minio-credentials}
           ports:
             - containerPort: 8002
               name: http

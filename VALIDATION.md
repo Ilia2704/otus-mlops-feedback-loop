@@ -56,13 +56,18 @@ Baseline degradation by drift strength:
 Команды:
 
 ```bash
-python tests/static_check.py
-python tests/integration_static_check.py
-pytest -q
-python -m compileall -q .
+uv run --group dev python tests/static_check.py
+uv run --group dev python tests/integration_static_check.py
+uv run --group dev pytest -q
+uv run --group dev python -m compileall -q .
 ```
 
 ## 3. Kubernetes/Helm wiring
+
+Namespace boundaries:
+
+- `monitoring`: Prometheus, Grafana, Alertmanager, `ServiceMonitor`, `PrometheusRule` и dashboard ConfigMap;
+- `mlops-demo`: все workload'ы feedback loop и их storage.
 
 Статически проверяется:
 
@@ -75,6 +80,7 @@ python -m compileall -q .
 - ServiceMonitor выбирает эти Services;
 - PrometheusRule содержит demo alerts;
 - model service и retrainer используют общий model PVC;
+- MinIO init загружает reference dataset и создает `current/`/`model-artifacts/`; MLflow artifacts направлены в MinIO;
 - retrainer регистрирует версию в MLflow Registry, использует `Staging`/`Production` и имеет rollback API;
 - MLflow/Airflow/Drifter/Checker/Controller wiring согласован;
 - Helm устанавливает pinned `kube-prometheus-stack 89.2.2` с `--wait`.
@@ -130,9 +136,9 @@ __pycache__
 ```text
 unzip -t
 clean extraction
-static_check.py
-integration_static_check.py
-pytest -q
+uv run --group dev python tests/static_check.py
+uv run --group dev python tests/integration_static_check.py
+uv run --group dev pytest -q
 bash -n scripts/*.sh
 ```
 

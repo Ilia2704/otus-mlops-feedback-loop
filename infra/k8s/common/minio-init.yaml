@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+  namespace: mlops-demo
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          env:
+            - name: MINIO_ENDPOINT
+              value: http://minio:9000
+            - name: MINIO_BUCKET
+              value: mlops-data
+          envFrom:
+            - secretRef: {name: minio-credentials}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              until mc alias set local "$MINIO_ENDPOINT" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
+                sleep 2
+              done
+              mc mb --ignore-existing "local/$MINIO_BUCKET"
+              mc cp /seed/titanic_train.csv "local/$MINIO_BUCKET/reference/titanic_train.csv"
+              for prefix in current model-artifacts; do
+                printf '' | mc pipe "local/$MINIO_BUCKET/$prefix/.keep"
+              done
+          volumeMounts:
+            - name: reference-dataset
+              mountPath: /seed
+              readOnly: true
+      volumes:
+        - name: reference-dataset
+          configMap:
+            name: reference-dataset

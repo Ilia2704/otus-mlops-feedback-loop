@@ -10,6 +10,11 @@ data:
   RETRAINER_URL: http://retrainer:8004
   MLFLOW_TRACKING_URI: http://mlflow:5000
   PROMETHEUS_URL: http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090
+  MINIO_ENDPOINT: http://minio:9000
+  MINIO_BUCKET: mlops-data
+  REFERENCE_DATASET_KEY: reference/titanic_train.csv
+  CURRENT_DATASET_PREFIX: current
+  MODEL_ARTIFACT_PREFIX: model-artifacts
 
   # Главные ручки для лекции:
   REQUEST_INTERVAL_SECONDS: "1"

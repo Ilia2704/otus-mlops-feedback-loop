@@ -1,4 +1,4 @@
-.PHONY: up infra images apps status ports reset check evaluate data destroy
+.PHONY: up infra images apps status ports ports-status ports-stop kube-ui reset check evaluate data destroy
 
 up: infra images apps
 
@@ -12,25 +12,35 @@ apps:
 	./scripts/deploy_apps.sh
 
 status:
-	kubectl -n monitoring get pods
-	kubectl -n mlops-demo get pods,svc,servicemonitor,prometheusrule
+	kubectl -n monitoring get pods,svc,servicemonitor,prometheusrule
+	kubectl -n monitoring get configmap -l grafana_dashboard=1
+	kubectl -n mlops-demo get pods,svc,pvc,job
 
 ports:
-	./scripts/port_forward.sh
+	./scripts/port_forward.sh start
+
+ports-status:
+	./scripts/port_forward.sh status
+
+ports-stop:
+	./scripts/port_forward.sh stop
+
+kube-ui:
+	minikube dashboard
 
 reset:
 	./scripts/reset_demo.sh
 
 check:
-	python tests/static_check.py
-	python tests/integration_static_check.py
-	pytest -q
+	uv run --group dev python tests/static_check.py
+	uv run --group dev python tests/integration_static_check.py
+	uv run --group dev pytest -q
 
 evaluate:
-	python scripts/evaluate_model.py
+	uv run --group dev python scripts/evaluate_model.py
 
 data:
-	python data/generate_dataset.py
+	uv run --group dev python data/generate_dataset.py
 
 destroy:
 	-kubectl delete namespace mlops-demo

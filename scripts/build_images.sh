@@ -2,6 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+minikube image build -t titanic-mlflow:demo -f infra/docker/mlflow.Dockerfile .
 minikube image build -t titanic-model:demo -f apps/model_service/Dockerfile .
 minikube image build -t titanic-drifter:demo -f demos/02_data_drift/drifter/Dockerfile .
 minikube image build -t titanic-drift-checker:demo -f demos/02_data_drift/drift_checker/Dockerfile .
