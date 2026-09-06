@@ -132,7 +132,7 @@ make ports-stop
 
 - Grafana: `localhost:3000`;
 - Prometheus: `localhost:9090`;
-- MLflow: `localhost:5000`;
+- MLflow: `localhost:5001`;
 - MinIO Console: `localhost:9001`, `minio` / `minio123`;
 - Airflow: `localhost:8080`, `admin/admin`;
 - Titanic API: `localhost:8000`.

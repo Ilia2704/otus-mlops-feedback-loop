@@ -11,7 +11,7 @@ FORWARDS=(
   "prometheus|monitoring|monitoring-kube-prometheus-prometheus|9090|9090"
   "alertmanager|monitoring|monitoring-kube-prometheus-alertmanager|9093|9093"
   "minio|mlops-demo|minio|9001|9001"
-  "mlflow|mlops-demo|mlflow|5000|5000"
+  "mlflow|mlops-demo|mlflow|5001|5000"
   "airflow|mlops-demo|airflow|8080|8080"
   "drifter|mlops-demo|drifter|8001|8001"
   "drift-checker|mlops-demo|drift-checker|8002|8002"
