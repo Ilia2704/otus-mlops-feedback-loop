@@ -14,8 +14,6 @@ Prometheus metrics -> PrometheusRule -> Alertmanager -> Telegram
 
 ## Слайд из лекции
 
-В отдельном PDF «Алертинг» есть только титульный слайд, поэтому для архитектуры использован слайд из лекции Prometheus: Prometheus передает alerts в Alertmanager, Grafana читает данные из Prometheus.
-
 ![Prometheus alerting](docs/slides/04_prometheus_alertmanager.png)
 
 Титульный слайд:
@@ -97,4 +95,4 @@ kubectl -n mlops-demo scale deployment/titanic-model --replicas=1
 7. Возьмите query accuracy из `README_03_FEEDBACK_LOOP.md` и поставьте condition `< 0.78`.
 8. В Notification policy направьте rule на созданный Telegram contact point.
 
-На лекции видно различие: `PrometheusRule` исполняется Prometheus/Alertmanager, а Grafana rule — Grafana.
+`PrometheusRule` исполняется Prometheus/Alertmanager, а Grafana rule — Grafana.

@@ -23,7 +23,7 @@ Drifter -> Titanic model -> Prometheus accuracy
 
 ## Baseline quality
 
-Модель не игрушечная на трех колонках. Она использует семь raw features и четыре простых derived features.
+Модель использует семь raw features и четыре простых derived features.
 
 ```text
 baseline accuracy : 0.8545
@@ -49,7 +49,7 @@ drift=0.60 -> accuracy 0.7313
 drift=0.95 -> accuracy 0.6940
 ```
 
-Для lecture feedback loop target передается вместе с запросом как `actual_survived`, поэтому online accuracy доступна сразу. В production target обычно приходит позже.
+Для feedback loop target передается вместе с запросом как `actual_survived`, поэтому online accuracy доступна сразу. В production target обычно приходит позже.
 
 Controller раз в `CHECK_INTERVAL_SECONDS` спрашивает Prometheus:
 
